@@ -1,0 +1,79 @@
+{
+    "monitors": [
+        {
+            "workspaces": [
+                {
+                    "idx": 1,
+                    "rules": [
+                        {
+                            "count": 1,
+                            "padding": {
+                                "top": 500,
+                                "left": 400,
+                                "right": 800,
+                                "bottom": 500
+                            }
+                        },
+                        {
+                            "count": 2,
+                            "padding": {
+                                "top": 500,
+                                "left": 200,
+                                "right": 400,
+                                "bottom": 500
+                            }
+                        }
+                    ],
+                    "default": {
+                        "top": 0,
+                        "left": 0,
+                        "right": 0,
+                        "bottom": 0
+                    }
+                }
+            ],
+            "rules": [
+                {
+                    "count": 1,
+                    "padding": {
+                        "top": 0,
+                        "left": 200,
+                        "right": 400,
+                        "bottom": 0
+                    }
+                },
+                {
+                    "count": 2,
+                    "padding": {
+                        "top": 0,
+                        "left": 400,
+                        "right": 800,
+                        "bottom": 0
+                    }
+                }
+            ],
+            "default": {
+                "top": 0,
+                "left": 100,
+                "right": 200,
+                "bottom": 0
+            }
+        },
+        {
+            "workspaces": [],
+            "rules": [],
+            "default": {
+                "top": 0,
+                "left": 0,
+                "right": 0,
+                "bottom": 0
+            }
+        }
+    ],
+    "default": {
+        "top": 0,
+        "left": 0,
+        "right": 0,
+        "bottom": 0
+    }
+}
