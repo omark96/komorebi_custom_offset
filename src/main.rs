@@ -57,10 +57,19 @@ pub fn main() -> anyhow::Result<()> {
                         NotificationEvent::WindowManager(WindowManagerEvent::FocusChange(
                             event,
                             window,
+                        ))
+                        | NotificationEvent::WindowManager(WindowManagerEvent::Cloak(
+                            event,
+                            window,
+                        ))
+                        | NotificationEvent::WindowManager(WindowManagerEvent::Uncloak(
+                            event,
+                            window,
                         )) => {
                             // println!("Focus changed! :)");
                         }
                         _ => {
+                            // println!("{:#?}", notification.event);
                             continue;
                         }
                     }
