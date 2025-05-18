@@ -2430,6 +2430,7 @@ name = "komorebi_custom_offset"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ctrlc",
  "komorebi-client",
  "serde",
  "serde_json",

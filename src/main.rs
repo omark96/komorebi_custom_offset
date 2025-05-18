@@ -2,11 +2,15 @@ use komorebi_client::Notification;
 use komorebi_client::NotificationEvent;
 use komorebi_client::Rect;
 use komorebi_client::SocketMessage;
+use komorebi_client::State;
 use komorebi_client::WindowManagerEvent;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::BufRead;
 use std::io::BufReader;
+use std::process;
+use std::sync::Arc;
+use std::sync::Mutex;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Rule {
@@ -36,10 +40,32 @@ const NAME: &str = "komofake.sock";
 pub fn main() -> anyhow::Result<()> {
     let socket = komorebi_client::subscribe(NAME)?;
     let json_data = fs::read_to_string("./config.json").expect("Failed to read config.json");
-
     let config: Config = serde_json::from_str(&json_data).expect("Failed to deserialize JSON");
-    println!("{:#?}", config);
+    // println!("{:#?}", config);
+
+    let default_offsets: Vec<Rect> = vec![];
+    let state_data = komorebi_client::send_query(&SocketMessage::State).unwrap();
+    let state: State = serde_json::from_str(&state_data).expect("Failed to get state");
+    println!("{:#?}", state);
+
+    let running = Arc::new(Mutex::new(true));
+    let running_clone = Arc::clone(&running);
+    ctrlc::set_handler(move || {
+        println!("received Ctrl+C!");
+        for (i, offset) in default_offsets.iter().enumerate() {
+            komorebi_client::send_message(&SocketMessage::MonitorWorkAreaOffset(i, *offset))
+                .unwrap();
+        }
+        let mut running = running_clone.lock().unwrap();
+        *running = false;
+    })
+    .expect("Error setting Ctrl-C handler");
+
     for incoming in socket.incoming() {
+        if !*running.lock().unwrap() {
+            println!("Stop running!");
+            break;
+        }
         let mut padding = None;
         match incoming {
             Ok(data) => {
