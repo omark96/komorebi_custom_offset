@@ -1,8 +1,7 @@
 use komorebi_client::Notification;
-use komorebi_client::NotificationEvent;
 use komorebi_client::Rect;
 use komorebi_client::SocketMessage;
-use komorebi_client::WindowManagerEvent;
+use komorebi_client::SubscribeOptions;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::BufRead;
@@ -34,7 +33,13 @@ struct Config {
 const NAME: &str = "komofake.sock";
 
 pub fn main() -> anyhow::Result<()> {
-    let socket = komorebi_client::subscribe(NAME)?;
+    // let socket = komorebi_client::subscribe(NAME)?;
+    let socket = komorebi_client::subscribe_with_options(
+        NAME,
+        SubscribeOptions {
+            filter_state_changes: true,
+        },
+    )?;
     let json_data = fs::read_to_string("./config.json").expect("Failed to read config.json");
 
     let config: Config = serde_json::from_str(&json_data).expect("Failed to deserialize JSON");
@@ -53,26 +58,6 @@ pub fn main() -> anyhow::Result<()> {
                             continue;
                         }
                     };
-                    match notification.event {
-                        NotificationEvent::WindowManager(WindowManagerEvent::FocusChange(
-                            event,
-                            window,
-                        ))
-                        | NotificationEvent::WindowManager(WindowManagerEvent::Cloak(
-                            event,
-                            window,
-                        ))
-                        | NotificationEvent::WindowManager(WindowManagerEvent::Uncloak(
-                            event,
-                            window,
-                        )) => {
-                            // println!("Focus changed! :)");
-                        }
-                        _ => {
-                            // println!("{:#?}", notification.event);
-                            continue;
-                        }
-                    }
                     let focused_monitor_idx = notification.state.monitors.focused_idx();
                     // println!("{:#?}", notification.event);
                     if let Some(focused_monitor) = notification.state.monitors.focused() {
@@ -111,10 +96,6 @@ pub fn main() -> anyhow::Result<()> {
                                     padding = Some(config.default);
                                 }
                             }
-                            // println!(
-                            //     "Active monitor idx: {} \n Active workspace idx: {} \n {:#?}",
-                            //     focused_monitor_idx, focused_workspace_idx, padding
-                            // );
 
                             komorebi_client::send_message(&SocketMessage::MonitorWorkAreaOffset(
                                 focused_monitor_idx,
