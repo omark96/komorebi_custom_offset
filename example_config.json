@@ -3,7 +3,6 @@
         {
             "workspaces": [
                 {
-                    "idx": 1,
                     "rules": [
                         {
                             "count": 1,
