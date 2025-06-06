@@ -7,6 +7,11 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::BufRead;
 use std::io::BufReader;
+use tokio::sync::mpsc;
+use tokio::sync::mpsc::Sender;
+use tokio::time::Duration;
+use tokio::time::Instant;
+use tokio::time::sleep_until;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 struct Rule {
@@ -31,17 +36,24 @@ struct Config {
     monitors: Vec<Monitor>,
     default: Rect,
     monocle: Option<Rect>,
+    offset_delay: Option<usize>,
 }
 #[derive(Clone, Debug)]
 struct AppState {
     active_workspace: Vec<usize>,
     monitors: Vec<MonitorState>,
+    offset_changes: usize,
+    offset_delay: usize,
+    tx: Option<Sender<()>>,
 }
 impl AppState {
     fn new() -> Self {
         Self {
             active_workspace: Vec::new(),
             monitors: Vec::new(),
+            offset_changes: 0,
+            offset_delay: 0,
+            tx: None,
         }
     }
 }
@@ -65,8 +77,8 @@ struct WorkspaceState {
 }
 
 const NAME: &str = "komofake.sock";
-
-pub fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     // let socket = komorebi_client::subscribe(NAME)?;
     let socket = komorebi_client::subscribe_with_options(
         NAME,
@@ -76,19 +88,18 @@ pub fn main() -> anyhow::Result<()> {
     )?;
     let json_data = fs::read_to_string("./config.json").expect("Failed to read config.json");
 
-    let state_data = komorebi_client::send_query(&SocketMessage::State).unwrap();
+    let state_data = komorebi_client::send_query(&SocketMessage::State)?;
     let state: State = serde_json::from_str(&state_data).expect("Failed to get state");
 
     let config: Config = serde_json::from_str(&json_data).expect("Failed to deserialize JSON");
     let mut app_state = initialize_app_state(&config, &state);
 
-    handle_state(state, &mut app_state);
+    let _ = handle_state(state, &mut app_state);
 
     for incoming in socket.incoming() {
         match incoming {
             Ok(data) => {
                 let reader = BufReader::new(data.try_clone()?);
-                let mut state: Option<State> = None;
                 for line in reader.lines().flatten() {
                     let notification: Notification = match serde_json::from_str(&line) {
                         Ok(notification) => notification,
@@ -97,9 +108,9 @@ pub fn main() -> anyhow::Result<()> {
                             continue;
                         }
                     };
-                    state = Some(notification.state);
+                    let state = notification.state;
+                    let _ = handle_state(state, &mut app_state).await;
                 }
-                handle_state(state.unwrap(), &mut app_state);
             }
             Err(error) => {
                 println!("{error}");
@@ -109,7 +120,7 @@ pub fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn handle_state(state: State, app_state: &mut AppState) {
+async fn handle_state(state: State, app_state: &mut AppState) {
     for (monitor_index, monitor) in state.monitors.elements().iter().enumerate() {
         for (workspace_index, workspace) in monitor.workspaces.elements().iter().enumerate() {
             let workspace_state =
@@ -140,27 +151,72 @@ fn handle_state(state: State, app_state: &mut AppState) {
             offset = workspace_state.monocle;
         }
 
-        if offset == None {
+        if offset.is_none() {
             offset = Some(workspace_state.default);
         }
-        match monitor.work_area_offset {
-            Some(work_area_offset) => {
-                if work_area_offset != offset.unwrap() {
-                    update_offset(monitor_index, offset.expect("Invalid offset"));
-                }
+        let should_update = match monitor.work_area_offset {
+            Some(work_area_offset) => work_area_offset != offset.unwrap(),
+            None => true,
+        };
+
+        if should_update {
+            let state_changes = &mut app_state.offset_changes;
+            *state_changes += 1;
+            println!("Offset change #{state_changes}");
+            match monitor.work_area_offset {
+                Some(work_area_offset) => println!("Changing from: {:#?}", work_area_offset),
+                None => println!("No work_area_offset set previously."),
             }
-            None => update_offset(monitor_index, offset.expect("Invalid offset")),
+            update_offset(monitor_index, offset.expect("Invalid offset"));
+            if let Some(tx) = &app_state.tx {
+                let _ = tx.send(()).await;
+            }
         }
     }
 }
 
 fn update_offset(monitor_index: usize, offset: Rect) {
+    println!("New offset for monitor {monitor_index}: {:#?}", offset);
     komorebi_client::send_message(&SocketMessage::MonitorWorkAreaOffset(monitor_index, offset))
         .unwrap();
 }
 
+fn retile() {
+    komorebi_client::send_message(&SocketMessage::Retile).unwrap();
+}
+
+async fn debounce_retile(mut rx: mpsc::Receiver<()>, delay: Duration) {
+    let mut last_event = Instant::now();
+    let mut pending = false;
+
+    loop {
+        tokio::select! {
+            _ = rx.recv() => {
+                last_event = Instant::now();
+                pending = true;
+            }
+            _ = sleep_until(last_event + delay), if pending => {
+                println!("Retiled");
+                retile();
+                pending = false;
+            }
+        }
+    }
+}
+
 fn initialize_app_state(config: &Config, state: &State) -> AppState {
     let mut app_state = AppState::new();
+
+    app_state.offset_delay = config.offset_delay.unwrap_or(0);
+    if app_state.offset_delay > 0 {
+        let (tx, rx) = mpsc::channel(1);
+        tokio::spawn(debounce_retile(
+            rx,
+            Duration::from_millis(app_state.offset_delay.try_into().unwrap()),
+        ));
+        app_state.tx = Some(tx);
+    }
+
     let global_default = config.default;
     let global_monocle = config.monocle;
     for (monitor_index, monitor) in state.monitors.elements().iter().enumerate() {
