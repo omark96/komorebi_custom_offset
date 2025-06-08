@@ -154,10 +154,13 @@ async fn handle_state(state: State, app_state: &mut AppState) {
         if offset.is_none() {
             offset = Some(workspace_state.default);
         }
-        let should_update = match monitor.work_area_offset {
-            Some(work_area_offset) => work_area_offset != offset.unwrap(),
-            None => true,
-        };
+        let mut should_update = true;
+        if let Some(focused_workspace) = monitor.focused_workspace() {
+            should_update = match focused_workspace.work_area_offset() {
+                Some(work_area_offset) => work_area_offset != offset.unwrap(),
+                None => true,
+            }
+        }
 
         if should_update {
             let state_changes = &mut app_state.offset_changes;
@@ -167,7 +170,11 @@ async fn handle_state(state: State, app_state: &mut AppState) {
                 Some(work_area_offset) => println!("Changing from: {:#?}", work_area_offset),
                 None => println!("No work_area_offset set previously."),
             }
-            update_offset(monitor_index, offset.expect("Invalid offset"));
+            update_offset(
+                monitor_index,
+                focused_workspace_index,
+                offset.expect("Invalid offset"),
+            );
             if let Some(tx) = &app_state.tx {
                 let _ = tx.send(()).await;
             }
@@ -175,10 +182,17 @@ async fn handle_state(state: State, app_state: &mut AppState) {
     }
 }
 
-fn update_offset(monitor_index: usize, offset: Rect) {
-    println!("New offset for monitor {monitor_index}: {:#?}", offset);
-    komorebi_client::send_message(&SocketMessage::MonitorWorkAreaOffset(monitor_index, offset))
-        .unwrap();
+fn update_offset(monitor_index: usize, workspace_index: usize, offset: Rect) {
+    println!(
+        "New offset for {workspace_index} on monitor {monitor_index}: {:#?}",
+        offset
+    );
+    komorebi_client::send_message(&SocketMessage::WorkspaceWorkAreaOffset(
+        monitor_index,
+        workspace_index,
+        offset,
+    ))
+    .unwrap();
 }
 
 fn retile() {

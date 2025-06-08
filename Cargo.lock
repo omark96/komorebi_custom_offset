@@ -1239,12 +1239,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8b14ccef22fc6f5a8f4d7d768562a182c04ce9a3b3157b91390b52ddfdf1a76"
 
 [[package]]
-name = "dunce"
-version = "1.0.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
-
-[[package]]
 name = "dyn-clone"
 version = "1.0.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2353,8 +2347,8 @@ checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
 name = "komorebi"
-version = "0.1.37"
-source = "git+https://github.com/LGUG2Z/komorebi#50c850cb02c9196bfeb325b0487ce532aabc80dc"
+version = "0.1.38"
+source = "git+https://github.com/omark96/komorebi/?branch=feat%28wm%29%2Fworkspace-work-area-offset#6510bc01d2446da5618e8f1370cb56c0230d691f"
 dependencies = [
  "bitflags 2.9.1",
  "clap",
@@ -2363,7 +2357,6 @@ dependencies = [
  "crossbeam-utils",
  "ctrlc",
  "dirs 6.0.0",
- "dunce",
  "getset",
  "hotwatch",
  "komorebi-themes",
@@ -2401,8 +2394,8 @@ dependencies = [
 
 [[package]]
 name = "komorebi-client"
-version = "0.1.37"
-source = "git+https://github.com/LGUG2Z/komorebi#50c850cb02c9196bfeb325b0487ce532aabc80dc"
+version = "0.1.38"
+source = "git+https://github.com/omark96/komorebi/?branch=feat%28wm%29%2Fworkspace-work-area-offset#6510bc01d2446da5618e8f1370cb56c0230d691f"
 dependencies = [
  "komorebi",
  "serde_json_lenient",
@@ -2411,8 +2404,8 @@ dependencies = [
 
 [[package]]
 name = "komorebi-themes"
-version = "0.1.37"
-source = "git+https://github.com/LGUG2Z/komorebi#50c850cb02c9196bfeb325b0487ce532aabc80dc"
+version = "0.1.38"
+source = "git+https://github.com/omark96/komorebi/?branch=feat%28wm%29%2Fworkspace-work-area-offset#6510bc01d2446da5618e8f1370cb56c0230d691f"
 dependencies = [
  "base16-egui-themes",
  "catppuccin-egui",
