@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::BufRead;
 use std::io::BufReader;
+use std::thread;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Sender;
 use tokio::time::Duration;
@@ -82,12 +83,22 @@ const NAME: &str = "komofake.sock";
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // let socket = komorebi_client::subscribe(NAME)?;
-    let socket = komorebi_client::subscribe_with_options(
-        NAME,
-        SubscribeOptions {
-            filter_state_changes: true,
-        },
-    )?;
+
+    let socket = loop {
+        match komorebi_client::subscribe_with_options(
+            NAME,
+            SubscribeOptions {
+                filter_state_changes: true,
+            },
+        ) {
+            Ok(socket) => break socket, // Success: exit loop and use the socket
+            Err(e) => {
+                eprintln!("Failed to connect: {e}. Retrying in 1 second...");
+                thread::sleep(Duration::from_secs(1));
+            }
+        }
+    };
+
     let json_data = fs::read_to_string("./config.json").expect("Failed to read config.json");
 
     let state_data = komorebi_client::send_query(&SocketMessage::State)?;
