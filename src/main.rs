@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 use komorebi_client::Notification;
 use komorebi_client::Rect;
 use komorebi_client::SocketMessage;
